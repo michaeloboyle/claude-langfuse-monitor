@@ -1,0 +1,37 @@
+{
+  "name": "claude-langfuse-monitor",
+  "version": "1.0.0",
+  "description": "Automatic Langfuse tracking for Claude Code activity - no setup required",
+  "main": "index.js",
+  "bin": {
+    "claude-langfuse": "./bin/claude-langfuse.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "install-service": "node scripts/install-service.js",
+    "uninstall-service": "node scripts/uninstall-service.js"
+  },
+  "keywords": [
+    "claude",
+    "langfuse",
+    "observability",
+    "monitoring",
+    "llm",
+    "ai"
+  ],
+  "author": "Michael O'Boyle <michael@oboyle.co>",
+  "license": "MIT",
+  "dependencies": {
+    "chokidar": "^3.5.3",
+    "commander": "^11.0.0",
+    "chalk": "^4.1.2",
+    "langfuse": "^3.6.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/michaeloboyle/claude-langfuse-monitor.git"
+  }
+}
