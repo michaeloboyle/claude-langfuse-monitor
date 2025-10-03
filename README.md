@@ -2,6 +2,11 @@
 
 > **Automatic Langfuse tracking for Claude Code - no setup required!**
 
+[![npm version](https://badge.fury.io/js/claude-langfuse-monitor.svg)](https://www.npmjs.com/package/claude-langfuse-monitor)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**⚠️ Community Project**: This is an independent tool, not affiliated with Anthropic or Langfuse. See [Legal Notice](#legal-notice) below.
+
 Just like [Claude Analytics](https://www.npmjs.com/package/claude-code-templates) provides comprehensive insights into your Claude Code usage, `claude-langfuse-monitor` automatically tracks all Claude Code activity in your self-hosted Langfuse instance.
 
 ## Features
@@ -229,9 +234,23 @@ npm install
 npm start
 ```
 
+## Legal Notice
+
+This is an independent community project and is not affiliated with, endorsed by, or sponsored by Anthropic PBC or Langfuse GmbH.
+
+- **Claude Code** is a product of Anthropic PBC
+- **Langfuse** is a product of Langfuse GmbH
+- **This tool** is provided "as is" under MIT License
+
+Use of this tool is subject to Claude Code's terms of service and Langfuse's terms of service.
+
+**Note on Privacy**: This tool reads conversation files stored locally by Claude Code (`~/.claude/projects/`). All data is sent only to your self-hosted Langfuse instance. No data is sent to third parties.
+
 ## License
 
-MIT - See LICENSE file
+MIT License - See [LICENSE](LICENSE) file for details.
+
+This software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement.
 
 ## Author
 
