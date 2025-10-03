@@ -12,3 +12,18 @@ yarn-error.log*
 .idea/
 .vscode/
 coverage/
+
+# Test files with credentials
+test-*.js
+*.test.local.js
+*.local.js
+
+# Langfuse config files
+.claude-langfuse/
+config.json
+*-config.json
+
+# Secrets and API keys
+*.key
+*.pem
+*.secret
