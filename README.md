@@ -191,24 +191,6 @@ Config stored at `~/.claude-langfuse/config.json`:
 }
 ```
 
-## Comparison: Claude Analytics vs Langfuse Monitor
-
-| Feature | Claude Analytics | Claude Langfuse Monitor |
-|---------|-----------------|------------------------|
-| **Purpose** | Development analytics | Production LLM monitoring |
-| **Data Source** | `~/.claude/history.jsonl` | `~/.claude/projects/*.jsonl` |
-| **Token Tracking** | ❌ | ✅ |
-| **Cost Analysis** | ❌ | ✅ |
-| **Setup Required** | None | Config once |
-| **Real-time** | ✅ | ✅ |
-| **Self-hosted** | ✅ | ✅ |
-| **Production Ready** | ❌ | ✅ |
-| **API Integration** | ❌ | ✅ |
-
-**Use both together:**
-- **Claude Analytics**: Understand your development patterns
-- **Claude Langfuse Monitor**: Track production LLM costs and performance
-
 ## Troubleshooting
 
 ### No traces appearing?

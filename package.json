@@ -8,6 +8,9 @@
   },
   "scripts": {
     "start": "node index.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "install-service": "node scripts/install-service.js",
     "uninstall-service": "node scripts/uninstall-service.js"
   },
@@ -22,10 +25,13 @@
   "author": "Michael O'Boyle <michael@oboyle.co>",
   "license": "MIT",
   "dependencies": {
+    "chalk": "^4.1.2",
     "chokidar": "^3.5.3",
     "commander": "^11.0.0",
-    "chalk": "^4.1.2",
     "langfuse": "^3.6.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   },
   "engines": {
     "node": ">=16.0.0"
