@@ -1,7 +1,7 @@
 {
   "name": "claude-langfuse-monitor",
   "version": "1.0.0",
-  "description": "Automatic Langfuse tracking for Claude Code activity - no setup required",
+  "description": "Automatic Langfuse tracking for Claude Code activity - no code changes required",
   "main": "index.js",
   "bin": {
     "claude-langfuse": "./bin/claude-langfuse.js"

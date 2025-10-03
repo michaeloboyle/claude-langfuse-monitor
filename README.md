@@ -1,6 +1,7 @@
 # Claude Langfuse Monitor
 
-> **Automatic Langfuse tracking for Claude Code - no setup required!**
+> **Automatic Langfuse tracking for Claude Code**
+> Zero instrumentation. No code changes. Set up once, track forever.
 
 [![npm version](https://badge.fury.io/js/claude-langfuse-monitor.svg)](https://www.npmjs.com/package/claude-langfuse-monitor)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -11,8 +12,8 @@ Just like [Claude Analytics](https://www.npmjs.com/package/claude-code-templates
 
 ## Features
 
-✅ **Zero-Setup Automatic Tracking** - Monitors `~/.claude/projects/` automatically
-✅ **Comprehensive Coverage** - All conversations, all projects, all messages
+✅ **Zero Instrumentation** - No code changes, decorators, or manual tracking required
+✅ **Automatic Coverage** - All conversations, all projects, all messages
 ✅ **Real-Time Streaming** - See activity appear in Langfuse as it happens
 ✅ **Session Grouping** - Conversations grouped by project and session
 ✅ **Historical Backfill** - Process last 24 hours on startup
