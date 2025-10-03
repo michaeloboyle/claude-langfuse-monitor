@@ -170,6 +170,55 @@ describe('Monitor', () => {
 
       expect(monitor.processedMessages.size).toBe(initialSize);
     });
+
+    test('extracts tool_use content blocks', () => {
+      const entry = {
+        type: 'assistant',
+        uuid: 'test-tool-use',
+        message: {
+          content: [
+            { type: 'tool_use', name: 'Read', input: { file_path: '/test.js' } }
+          ]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      monitor.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+      expect(monitor.processedMessages.has('test-tool-use')).toBe(true);
+    });
+
+    test('extracts tool_result content blocks', () => {
+      const entry = {
+        type: 'user',
+        uuid: 'test-tool-result',
+        message: {
+          content: [
+            { type: 'tool_result', tool_use_id: 'tool-123', content: 'File contents here' }
+          ]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      monitor.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+      expect(monitor.processedMessages.has('test-tool-result')).toBe(true);
+    });
+
+    test('extracts mixed content blocks', () => {
+      const entry = {
+        type: 'assistant',
+        uuid: 'test-mixed',
+        message: {
+          content: [
+            { type: 'text', text: 'Let me read that file' },
+            { type: 'tool_use', name: 'Read', input: { file_path: '/test.js' } }
+          ]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      monitor.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+      expect(monitor.processedMessages.has('test-mixed')).toBe(true);
+    });
   });
 
   describe('processConversationFile', () => {

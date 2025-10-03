@@ -216,11 +216,20 @@ class Monitor {
     if (entry.message && typeof entry.message === 'object') {
       // New format: message.content array
       if (entry.message.content && Array.isArray(entry.message.content)) {
-        // Extract text from content blocks
+        // Extract text from all content block types
         text = entry.message.content
-          .filter(block => block.type === 'text' || block.text)
-          .map(block => block.text || '')
-          .join('\n');
+          .map(block => {
+            if (block.type === 'text' || block.text) {
+              return block.text || '';
+            } else if (block.type === 'tool_use') {
+              return `[Tool: ${block.name}]\n${JSON.stringify(block.input, null, 2)}`;
+            } else if (block.type === 'tool_result') {
+              return block.content || '';
+            }
+            return '';
+          })
+          .filter(content => content)
+          .join('\n\n');
       }
       // Fallback: old format with direct text field
       if (!text) {
