@@ -20,11 +20,13 @@ class Monitor {
     this.options = {
       historyHours: options.historyHours || 24,
       daemon: options.daemon || false,
-      dryRun: options.dryRun || false
+      dryRun: options.dryRun || false,
+      quiet: options.quiet || false
     };
 
     this.processedMessages = new Set();
     this.conversationSessions = new Map();
+    this.messageCount = { user: 0, assistant: 0 };
 
     // Load configuration
     this.config = this.loadConfig();
@@ -149,7 +151,8 @@ class Monitor {
       this.processConversationFile(filepath);
     }
 
-    console.log(chalk.green(`✅ Processed ${conversations.length} conversations`));
+    const totalMessages = this.messageCount.user + this.messageCount.assistant;
+    console.log(chalk.green(`✅ Processed ${conversations.length} conversations (${totalMessages} messages: ${this.messageCount.user} user, ${this.messageCount.assistant} assistant)`));
   }
 
   processConversationFile(filepath) {
@@ -211,19 +214,34 @@ class Monitor {
     // Extract message content
     let text = '';
     if (entry.message && typeof entry.message === 'object') {
-      text = entry.message.text || '';
+      // New format: message.content array
+      if (entry.message.content && Array.isArray(entry.message.content)) {
+        // Extract text from content blocks
+        text = entry.message.content
+          .filter(block => block.type === 'text' || block.text)
+          .map(block => block.text || '')
+          .join('\n');
+      }
+      // Fallback: old format with direct text field
+      if (!text) {
+        text = entry.message.text || '';
+      }
     } else if (typeof entry.message === 'string') {
       text = entry.message;
     }
 
     const timestamp = new Date(entry.timestamp || Date.now());
 
-    // Print activity
-    const projectName = projectPath.split('/').pop();
-    const preview = text.substring(0, 60).replace(/\n/g, ' ');
-    const icon = msgType === 'user' ? '👤' : '🤖';
+    // Track message counts
+    this.messageCount[msgType]++;
 
-    console.log(chalk.gray(`${icon} [${projectName}] ${preview}...`));
+    // Print activity (unless quiet mode)
+    if (!this.options.quiet) {
+      const projectName = projectPath.split('/').pop();
+      const preview = text.substring(0, 60).replace(/\n/g, ' ');
+      const icon = msgType === 'user' ? '👤' : '🤖';
+      console.log(chalk.gray(`${icon} [${projectName}] ${preview}...`));
+    }
 
     if (this.options.dryRun) {
       return;

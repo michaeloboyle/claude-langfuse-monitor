@@ -59,7 +59,9 @@ node index.js
 npm install -g .
 
 # Then use CLI commands
-claude-langfuse start
+claude-langfuse start                    # Full verbose output
+claude-langfuse start --quiet            # Quiet mode (summaries only)
+claude-langfuse start --history 1        # Process last 1 hour only
 claude-langfuse config --host http://localhost:3001 --public-key pk-lf-... --secret-key sk-lf-...
 claude-langfuse status
 claude-langfuse install-service

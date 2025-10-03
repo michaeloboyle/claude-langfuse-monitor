@@ -21,13 +21,15 @@ program
   .description('Start monitoring Claude Code activity')
   .option('-d, --daemon', 'Run as background daemon')
   .option('-h, --history <hours>', 'Process last N hours of history', '24')
+  .option('-q, --quiet', 'Quiet mode - only show summaries, not individual messages')
   .action(async (options) => {
     console.log(chalk.cyan('🔍 Claude Langfuse Monitor'));
     console.log(chalk.cyan('='.repeat(50)));
 
     const monitor = new Monitor({
       historyHours: parseInt(options.history),
-      daemon: options.daemon
+      daemon: options.daemon,
+      quiet: options.quiet
     });
 
     try {

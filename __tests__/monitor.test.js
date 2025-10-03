@@ -324,6 +324,18 @@ describe('Monitor', () => {
 
       expect(m.options.daemon).toBe(true);
     });
+
+    test('accepts quiet mode', () => {
+      const m = new Monitor({ quiet: true, dryRun: true });
+
+      expect(m.options.quiet).toBe(true);
+    });
+
+    test('defaults quiet mode to false', () => {
+      const m = new Monitor({ dryRun: true });
+
+      expect(m.options.quiet).toBe(false);
+    });
   });
 
   describe('processedMessages Set', () => {
@@ -351,6 +363,76 @@ describe('Monitor', () => {
       const sizeAfterSecond = monitor.processedMessages.size;
 
       expect(sizeAfterFirst).toBe(sizeAfterSecond);
+    });
+  });
+
+  describe('quiet mode', () => {
+    let consoleLogSpy;
+
+    beforeEach(() => {
+      consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+    });
+
+    afterEach(() => {
+      consoleLogSpy.mockRestore();
+    });
+
+    test('suppresses per-message logging in quiet mode', () => {
+      const quietMonitor = new Monitor({ quiet: true, dryRun: true });
+
+      const entry = {
+        type: 'user',
+        uuid: 'quiet-test-uuid',
+        message: 'Test message',
+        timestamp: new Date().toISOString()
+      };
+
+      quietMonitor.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+
+      // Should not log the message preview
+      expect(consoleLogSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('Test message')
+      );
+    });
+
+    test('shows per-message logging when not in quiet mode', () => {
+      const verboseMonitor = new Monitor({ quiet: false, dryRun: true });
+
+      const entry = {
+        type: 'user',
+        uuid: 'verbose-test-uuid',
+        message: 'Test message',
+        timestamp: new Date().toISOString()
+      };
+
+      verboseMonitor.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+
+      // Should log the message preview
+      expect(consoleLogSpy).toHaveBeenCalled();
+    });
+
+    test('tracks message counts regardless of quiet mode', () => {
+      const quietMonitor = new Monitor({ quiet: true, dryRun: true });
+
+      const userEntry = {
+        type: 'user',
+        uuid: 'user-msg',
+        message: 'User message',
+        timestamp: new Date().toISOString()
+      };
+
+      const assistantEntry = {
+        type: 'assistant',
+        uuid: 'assistant-msg',
+        message: 'Assistant message',
+        timestamp: new Date().toISOString()
+      };
+
+      quietMonitor.processMessage(userEntry, 'session-123', '/test/project', 'conv-123');
+      quietMonitor.processMessage(assistantEntry, 'session-123', '/test/project', 'conv-123');
+
+      expect(quietMonitor.messageCount.user).toBe(1);
+      expect(quietMonitor.messageCount.assistant).toBe(1);
     });
   });
 });
