@@ -71,11 +71,12 @@ claude-langfuse install-service
 
 ### Unit Tests
 
-Test suite located in `__tests__/monitor.test.js` with 20 tests covering:
+Test suite located in `__tests__/monitor.test.js` with 28 tests covering:
 - Config loading (file, env vars, defaults)
-- Message parsing and deduplication
+- Message parsing and deduplication (including tool_use, tool_result, text blocks)
 - Session ID generation (MD5 hashing)
 - File watching and JSONL parsing
+- Quiet mode functionality
 - Edge cases and error handling
 
 ```bash
@@ -135,6 +136,15 @@ Encoded project paths in file structure (e.g., `~/.claude/projects/Users-you-Doc
 
 ### Historical Backfill
 `processExistingHistory()` scans all conversation files modified within `historyHours` (default 24h) before starting the file watcher.
+
+### Content Extraction
+Message content extraction (lines 214-240) handles all Claude Code message types:
+- **Text blocks** (`type: "text"`): Extract `.text` field
+- **Tool use blocks** (`type: "tool_use"`): Format as `[Tool: name]\n{JSON input}`
+- **Tool result blocks** (`type: "tool_result"`): Extract `.content` field
+- Multiple blocks are joined with `\n\n` separator
+
+This ensures Langfuse traces capture complete conversation context including tool interactions.
 
 ## Configuration Files
 
