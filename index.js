@@ -318,7 +318,7 @@ class Monitor {
           });
         }
       }
-    } else if (msgType === 'assistant') {
+    } else {
       this.pendingEvents.push({
         type: 'generation-create',
         id: eventId,
@@ -434,13 +434,18 @@ class Monitor {
   }
 }
 
-module.exports = { Monitor };
-
-// If run directly
-if (require.main === module) {
+function runMain() {
   const monitor = new Monitor();
   monitor.start().catch(error => {
     console.error(chalk.red(`Error: ${error.message}`));
     process.exit(1);
   });
+}
+
+module.exports = { Monitor, runMain };
+
+// If run directly
+/* istanbul ignore next */
+if (require.main === module) {
+  runMain();
 }
