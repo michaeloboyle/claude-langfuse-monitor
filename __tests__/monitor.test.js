@@ -60,6 +60,19 @@ describe('Monitor', () => {
       expect(config.secretKey).toBe('sk-test-456');
     });
 
+    test('loads userId from config file when present', () => {
+      mockConfig.userId = 'test@example.com';
+      const config = monitor.loadConfig();
+
+      expect(config.userId).toBe('test@example.com');
+    });
+
+    test('userId is undefined when not in config file', () => {
+      const config = monitor.loadConfig();
+
+      expect(config.userId).toBeUndefined();
+    });
+
     test('falls back to environment variables when config file missing', () => {
       fs.existsSync.mockReturnValue(false);
       process.env.LANGFUSE_HOST = 'http://env-host:3001';
@@ -412,6 +425,83 @@ describe('Monitor', () => {
       const sizeAfterSecond = monitor.processedMessages.size;
 
       expect(sizeAfterFirst).toBe(sizeAfterSecond);
+    });
+  });
+
+  describe('userId configuration', () => {
+    test('uses userId from config in user traces', () => {
+      mockConfig.userId = 'configured@example.com';
+      const m = new Monitor({ dryRun: false });
+
+      const entry = {
+        type: 'user',
+        uuid: 'userid-test-uuid',
+        message: 'Hello',
+        timestamp: new Date().toISOString()
+      };
+
+      m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+
+      expect(m.langfuse.traces).toHaveLength(1);
+      expect(m.langfuse.traces[0].userId).toBe('configured@example.com');
+    });
+
+    test('falls back to user@id.not.set when no userId in config', () => {
+      // mockConfig has no userId
+      const m = new Monitor({ dryRun: false });
+
+      const entry = {
+        type: 'user',
+        uuid: 'fallback-userid-uuid',
+        message: 'Hello',
+        timestamp: new Date().toISOString()
+      };
+
+      m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+
+      expect(m.langfuse.traces).toHaveLength(1);
+      expect(m.langfuse.traces[0].userId).toBe('user@id.not.set');
+    });
+  });
+
+  describe('dynamic model from entry', () => {
+    test('uses model from entry.message.model in assistant generations', () => {
+      const m = new Monitor({ dryRun: false });
+
+      const entry = {
+        type: 'assistant',
+        uuid: 'model-test-uuid',
+        parentUuid: 'parent-uuid',
+        message: {
+          model: 'claude-opus-4-6',
+          content: [{ type: 'text', text: 'Response text' }]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+
+      expect(m.langfuse.generations).toHaveLength(1);
+      expect(m.langfuse.generations[0].model).toBe('claude-opus-4-6');
+    });
+
+    test('model is undefined when not present on entry.message', () => {
+      const m = new Monitor({ dryRun: false });
+
+      const entry = {
+        type: 'assistant',
+        uuid: 'no-model-uuid',
+        parentUuid: 'parent-uuid',
+        message: {
+          content: [{ type: 'text', text: 'Response text' }]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+
+      expect(m.langfuse.generations).toHaveLength(1);
+      expect(m.langfuse.generations[0].model).toBeUndefined();
     });
   });
 
