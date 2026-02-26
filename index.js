@@ -263,7 +263,7 @@ class Monitor {
           id: uuid,
           name: 'claude_code_user',
           sessionId: sessionId,
-          userId: 'michael@oboyle.co',
+          userId: this.config.userId || 'user@id.not.set',
           metadata: {
             project: projectPath,
             conversationId: conversationId,
@@ -280,7 +280,7 @@ class Monitor {
           id: uuid,
           traceId: entry.parentUuid,
           name: 'claude_response',
-          model: 'claude-sonnet-4-5-20250929',
+          model: entry.message.model,
           metadata: {
             project: projectPath,
             conversationId: conversationId,

@@ -46,6 +46,7 @@ program
   .option('--host <url>', 'Langfuse host URL', 'http://localhost:3001')
   .option('--public-key <key>', 'Langfuse public key')
   .option('--secret-key <key>', 'Langfuse secret key')
+  .option('--user-id <userId>', 'user id to use in the trace')
   .action((options) => {
     const fs = require('fs');
     const path = require('path');
@@ -63,7 +64,8 @@ program
     const config = {
       host: options.host,
       publicKey: options.publicKey,
-      secretKey: options.secretKey
+      secretKey: options.secretKey,
+      userId: options.userId
     };
 
     fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
