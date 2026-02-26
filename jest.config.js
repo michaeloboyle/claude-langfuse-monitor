@@ -21,6 +21,6 @@ module.exports = {
   },
   // Mock Langfuse to avoid ESM issues
   moduleNameMapper: {
-    '^langfuse$': '<rootDir>/__tests__/__mocks__/langfuse.js'
+    '^@langfuse/client$': '<rootDir>/__tests__/__mocks__/@langfuse/client.js'
   }
 };

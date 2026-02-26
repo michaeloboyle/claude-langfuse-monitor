@@ -12,7 +12,7 @@ const path = require('path');
 const os = require('os');
 const chokidar = require('chokidar');
 const chalk = require('chalk');
-const { Langfuse } = require('langfuse');
+const { LangfuseClient } = require('@langfuse/client');
 const crypto = require('crypto');
 
 class Monitor {
@@ -26,14 +26,16 @@ class Monitor {
 
     this.processedMessages = new Set();
     this.conversationSessions = new Map();
+    this.pendingToolSpans = new Map();
     this.messageCount = { user: 0, assistant: 0 };
 
     // Load configuration
     this.config = this.loadConfig();
 
     // Initialize Langfuse client
+    this.pendingEvents = [];
     if (!this.options.dryRun) {
-      this.langfuse = new Langfuse({
+      this.langfuse = new LangfuseClient({
         publicKey: this.config.publicKey,
         secretKey: this.config.secretKey,
         baseUrl: this.config.host
@@ -106,9 +108,7 @@ class Monitor {
       console.log(chalk.yellow('\n\n🛑 Stopping monitor...'));
       await watcher.close();
 
-      if (this.langfuse) {
-        await this.langfuse.shutdownAsync();
-      }
+      await this.flushPendingEvents();
 
       console.log(chalk.green('✅ Monitor stopped'));
       process.exit(0);
@@ -213,18 +213,24 @@ class Monitor {
 
     // Extract message content
     let text = '';
+    const toolUseBlocks = [];
+    const toolResultBlocks = [];
     if (entry.message && typeof entry.message === 'object') {
       // New format: message.content array
       if (entry.message.content && Array.isArray(entry.message.content)) {
-        // Extract text from all content block types
+        // Extract text from all content block types; collect tool_use/tool_result blocks separately
         text = entry.message.content
           .map(block => {
             if (block.type === 'text' || block.text) {
               return block.text || '';
             } else if (block.type === 'tool_use') {
-              return `[Tool: ${block.name}]\n${JSON.stringify(block.input, null, 2)}`;
+              toolUseBlocks.push(block);
+              return '';
             } else if (block.type === 'tool_result') {
-              return block.content || '';
+              toolResultBlocks.push(block);
+              return Array.isArray(block.content)
+                ? block.content.map(c => c.text || c).join('')
+                : (block.content || '');
             }
             return '';
           })
@@ -256,14 +262,22 @@ class Monitor {
       return;
     }
 
-    // Create trace in Langfuse
-    try {
-      if (msgType === 'user') {
-        this.langfuse.trace({
+    // Queue event for batch ingestion
+    const eventId = crypto.randomUUID();
+    const eventTimestamp = new Date().toISOString();
+
+    if (msgType === 'user') {
+      this.pendingEvents.push({
+        type: 'trace-create',
+        id: eventId,
+        timestamp: eventTimestamp,
+        body: {
           id: uuid,
           name: 'claude_code_user',
           sessionId: sessionId,
           userId: this.config.userId || 'user@id.not.set',
+          input: text,
+          timestamp: timestamp.toISOString(),
           metadata: {
             project: projectPath,
             conversationId: conversationId,
@@ -271,36 +285,121 @@ class Monitor {
             cwd: entry.cwd,
             messageType: msgType,
             source: 'claude_code_automatic'
-          },
-          input: text,
-          timestamp: timestamp
-        });
-      } else if (msgType === 'assistant') {
-        this.langfuse.generation({
+          }
+        }
+      });
+
+      // Merge tool_result blocks with buffered tool_use spans
+      for (const result of toolResultBlocks) {
+        const pending = this.pendingToolSpans.get(result.tool_use_id);
+        if (pending) {
+          this.pendingToolSpans.delete(result.tool_use_id);
+          this.pendingEvents.push({
+            type: 'span-create',
+            id: crypto.randomUUID(),
+            timestamp: pending.eventTimestamp,
+            body: {
+              id: pending.toolCall.id || crypto.randomUUID(),
+              traceId: pending.traceId,
+              parentObservationId: pending.parentObservationId,
+              name: pending.toolCall.name,
+              input: pending.toolCall.input,
+              output: result.content,
+              is_error: result.is_error,
+              type: 'tool',
+              startTime: pending.timestamp.toISOString(),
+              endTime: timestamp.toISOString(),
+              metadata: {
+                project: pending.project,
+                conversationId: pending.conversationId,
+                source: 'claude_code_automatic'
+              }
+            }
+          });
+        }
+      }
+    } else if (msgType === 'assistant') {
+      this.pendingEvents.push({
+        type: 'generation-create',
+        id: eventId,
+        timestamp: eventTimestamp,
+        body: {
           id: uuid,
           traceId: entry.parentUuid,
           name: 'claude_response',
           model: entry.message.model,
+          output: text,
+          startTime: timestamp.toISOString(),
+          endTime: timestamp.toISOString(),
           metadata: {
             project: projectPath,
             conversationId: conversationId,
             requestId: entry.requestId,
             messageType: msgType,
             source: 'claude_code_automatic'
-          },
-          output: text,
-          startTime: timestamp,
-          endTime: timestamp
+          }
+        }
+      });
+
+      // Buffer tool_use blocks to be merged with their tool_result when it arrives
+      for (const toolCall of toolUseBlocks) {
+        this.pendingToolSpans.set(toolCall.id, {
+          toolCall,
+          traceId: entry.parentUuid,
+          parentObservationId: uuid,
+          timestamp,
+          project: projectPath,
+          conversationId,
+          eventTimestamp
         });
       }
+    }
 
-      // Flush periodically
-      if (this.processedMessages.size % 10 === 0) {
-        this.langfuse.flushAsync();
-      }
+    // Flush periodically
+    if (this.pendingEvents.length >= 10) {
+      this.flushPendingEvents();
+    }
+  }
 
+  async flushPendingEvents() {
+    if (!this.langfuse) {
+      return;
+    }
+
+    // Emit any tool_use spans that never received a matching tool_result
+    for (const [, pending] of this.pendingToolSpans) {
+      this.pendingEvents.push({
+        type: 'span-create',
+        id: crypto.randomUUID(),
+        timestamp: pending.eventTimestamp,
+        body: {
+          id: pending.toolCall.id || crypto.randomUUID(),
+          traceId: pending.traceId,
+          parentObservationId: pending.parentObservationId,
+          name: pending.toolCall.name,
+          input: pending.toolCall.input,
+          type: 'tool',
+          startTime: pending.timestamp.toISOString(),
+          endTime: pending.timestamp.toISOString(),
+          metadata: {
+            project: pending.project,
+            conversationId: pending.conversationId,
+            source: 'claude_code_automatic'
+          }
+        }
+      });
+    }
+    this.pendingToolSpans.clear();
+
+    if (this.pendingEvents.length === 0) {
+      return;
+    }
+
+    const events = this.pendingEvents.splice(0);
+    try {
+      await this.langfuse.api.ingestion.batch({ batch: events });
     } catch (error) {
-      console.error(chalk.red(`Error creating trace: ${error.message}`));
+      console.error(chalk.red(`Error flushing events: ${error.message}`));
     }
   }
 

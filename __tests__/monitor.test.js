@@ -442,8 +442,9 @@ describe('Monitor', () => {
 
       m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
 
-      expect(m.langfuse.traces).toHaveLength(1);
-      expect(m.langfuse.traces[0].userId).toBe('configured@example.com');
+      const traceEvents = m.pendingEvents.filter(e => e.type === 'trace-create');
+      expect(traceEvents).toHaveLength(1);
+      expect(traceEvents[0].body.userId).toBe('configured@example.com');
     });
 
     test('falls back to user@id.not.set when no userId in config', () => {
@@ -459,8 +460,149 @@ describe('Monitor', () => {
 
       m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
 
-      expect(m.langfuse.traces).toHaveLength(1);
-      expect(m.langfuse.traces[0].userId).toBe('user@id.not.set');
+      const traceEvents = m.pendingEvents.filter(e => e.type === 'trace-create');
+      expect(traceEvents).toHaveLength(1);
+      expect(traceEvents[0].body.userId).toBe('user@id.not.set');
+    });
+  });
+
+  describe('tool observations', () => {
+    test('creates span-create with type tool when tool_result arrives with matching id', () => {
+      const m = new Monitor({ dryRun: false });
+
+      const assistantEntry = {
+        type: 'assistant',
+        uuid: 'tool-obs-uuid',
+        parentUuid: 'parent-uuid',
+        message: {
+          content: [
+            { type: 'tool_use', id: 'tool-call-1', name: 'Read', input: { file_path: '/test.js' } }
+          ]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      const userEntry = {
+        type: 'user',
+        uuid: 'tool-result-uuid',
+        parentUuid: 'tool-obs-uuid',
+        message: {
+          content: [
+            { type: 'tool_result', tool_use_id: 'tool-call-1', content: 'file contents here', is_error: false }
+          ]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      m.processMessage(assistantEntry, 'session-123', '/test/project', 'conv-123');
+      // tool_use is buffered — no span yet
+      expect(m.pendingEvents.filter(e => e.type === 'span-create')).toHaveLength(0);
+      expect(m.pendingToolSpans.has('tool-call-1')).toBe(true);
+
+      m.processMessage(userEntry, 'session-123', '/test/project', 'conv-123');
+      // now merged span should be in pendingEvents
+      const spanEvents = m.pendingEvents.filter(e => e.type === 'span-create');
+      expect(spanEvents).toHaveLength(1);
+      expect(spanEvents[0].body.type).toBe('tool');
+      expect(spanEvents[0].body.name).toBe('Read');
+      expect(spanEvents[0].body.input).toEqual({ file_path: '/test.js' });
+      expect(spanEvents[0].body.output).toBe('file contents here');
+      expect(spanEvents[0].body.is_error).toBe(false);
+      expect(spanEvents[0].body.id).toBe('tool-call-1');
+      expect(spanEvents[0].body.traceId).toBe('parent-uuid');
+      expect(spanEvents[0].body.parentObservationId).toBe('tool-obs-uuid');
+      expect(m.pendingToolSpans.has('tool-call-1')).toBe(false);
+    });
+
+    test('tool_use blocks do not appear in generation output text', () => {
+      const m = new Monitor({ dryRun: false });
+
+      const entry = {
+        type: 'assistant',
+        uuid: 'tool-text-uuid',
+        parentUuid: 'parent-uuid',
+        message: {
+          content: [
+            { type: 'tool_use', id: 'tool-call-2', name: 'Bash', input: { command: 'ls' } }
+          ]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+
+      const genEvents = m.pendingEvents.filter(e => e.type === 'generation-create');
+      expect(genEvents).toHaveLength(1);
+      expect(genEvents[0].body.output).toBe('');
+    });
+
+    test('mixed content creates generation for text and spans for tool_use', () => {
+      const m = new Monitor({ dryRun: false });
+
+      const assistantEntry = {
+        type: 'assistant',
+        uuid: 'mixed-uuid',
+        parentUuid: 'parent-uuid',
+        message: {
+          content: [
+            { type: 'text', text: 'Let me read that file' },
+            { type: 'tool_use', id: 'tool-call-3', name: 'Read', input: { file_path: '/test.js' } },
+            { type: 'tool_use', id: 'tool-call-4', name: 'Bash', input: { command: 'ls' } }
+          ]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      const userEntry = {
+        type: 'user',
+        uuid: 'mixed-result-uuid',
+        parentUuid: 'mixed-uuid',
+        message: {
+          content: [
+            { type: 'tool_result', tool_use_id: 'tool-call-3', content: 'const x = 1;', is_error: false },
+            { type: 'tool_result', tool_use_id: 'tool-call-4', content: 'file1.js\nfile2.js', is_error: false }
+          ]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      m.processMessage(assistantEntry, 'session-123', '/test/project', 'conv-123');
+      m.processMessage(userEntry, 'session-123', '/test/project', 'conv-123');
+
+      const genEvents = m.pendingEvents.filter(e => e.type === 'generation-create');
+      expect(genEvents).toHaveLength(1);
+      expect(genEvents[0].body.output).toBe('Let me read that file');
+
+      const spanEvents = m.pendingEvents.filter(e => e.type === 'span-create');
+      expect(spanEvents).toHaveLength(2);
+      expect(spanEvents[0].body.name).toBe('Read');
+      expect(spanEvents[0].body.output).toBe('const x = 1;');
+      expect(spanEvents[1].body.name).toBe('Bash');
+      expect(spanEvents[1].body.output).toBe('file1.js\nfile2.js');
+    });
+
+    test('unmatched tool_use spans are buffered in pendingToolSpans until flush', () => {
+      const m = new Monitor({ dryRun: false });
+
+      const entry = {
+        type: 'assistant',
+        uuid: 'no-id-tool-uuid',
+        parentUuid: 'parent-uuid',
+        message: {
+          content: [
+            { type: 'tool_use', name: 'Glob', input: { pattern: '**/*.js' } }
+          ]
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
+
+      // No span-create yet — buffered waiting for tool_result
+      const spanEvents = m.pendingEvents.filter(e => e.type === 'span-create');
+      expect(spanEvents).toHaveLength(0);
+      // Buffered in pendingToolSpans (key is undefined since no id on tool_use)
+      expect(m.pendingToolSpans.size).toBe(1);
     });
   });
 
@@ -481,8 +623,9 @@ describe('Monitor', () => {
 
       m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
 
-      expect(m.langfuse.generations).toHaveLength(1);
-      expect(m.langfuse.generations[0].model).toBe('claude-opus-4-6');
+      const genEvents = m.pendingEvents.filter(e => e.type === 'generation-create');
+      expect(genEvents).toHaveLength(1);
+      expect(genEvents[0].body.model).toBe('claude-opus-4-6');
     });
 
     test('model is undefined when not present on entry.message', () => {
@@ -500,8 +643,9 @@ describe('Monitor', () => {
 
       m.processMessage(entry, 'session-123', '/test/project', 'conv-123');
 
-      expect(m.langfuse.generations).toHaveLength(1);
-      expect(m.langfuse.generations[0].model).toBeUndefined();
+      const genEvents = m.pendingEvents.filter(e => e.type === 'generation-create');
+      expect(genEvents).toHaveLength(1);
+      expect(genEvents[0].body.model).toBeUndefined();
     });
   });
 
