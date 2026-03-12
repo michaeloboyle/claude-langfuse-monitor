@@ -40,7 +40,8 @@ npx claude-langfuse-monitor start
 claude-langfuse config \
   --host http://localhost:3001 \
   --public-key pk-lf-... \
-  --secret-key sk-lf-...
+  --secret-key sk-lf-... \
+  --user-id you@example.com
 ```
 
 ### Start monitoring
@@ -111,7 +112,8 @@ claude-langfuse start --daemon
 claude-langfuse config \
   --host http://localhost:3001 \
   --public-key pk-lf-... \
-  --secret-key sk-lf-...
+  --secret-key sk-lf-... \
+  --user-id you@example.com
 
 # Check status
 claude-langfuse status
@@ -136,8 +138,9 @@ tail -f ~/Library/Logs/claude-langfuse-monitor.log
 
 - **Name**: `claude_code_user` (user messages) / `claude_response` (Claude responses)
 - **Session ID**: Grouped by conversation
-- **User ID**: `michael@oboyle.co` (configurable)
-- **Input/Output**: Full message content
+- **User ID**: Set via `claude-langfuse config --user-id <id>`
+- **Model**: Automatically detected from conversation entries
+- **Input/Output**: Full message content including tool calls and results
 - **Metadata**:
   - Project path
   - Git branch
@@ -152,7 +155,7 @@ tail -f ~/Library/Logs/claude-langfuse-monitor.log
   "id": "a1b2c3d4-...",
   "name": "claude_code_user",
   "sessionId": "3f2e1d0c...",
-  "userId": "michael@oboyle.co",
+  "userId": "you@example.com",
   "input": "implement automatic langfuse tracking for all claude activity",
   "metadata": {
     "project": "/Users/you/Documents/github/myproject",
@@ -193,7 +196,8 @@ Config stored at `~/.claude-langfuse/config.json`:
 {
   "host": "http://localhost:3001",
   "publicKey": "pk-lf-...",
-  "secretKey": "sk-lf-..."
+  "secretKey": "sk-lf-...",
+  "userId": "you@example.com"
 }
 ```
 
