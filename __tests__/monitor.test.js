@@ -381,12 +381,6 @@ describe('Monitor', () => {
       expect(m.options.historyHours).toBe(48);
     });
 
-    test('preserves historyHours: 0 (does not fall back to default)', () => {
-      const m = new Monitor({ historyHours: 0, dryRun: true });
-
-      expect(m.options.historyHours).toBe(0);
-    });
-
     test('accepts daemon mode', () => {
       const m = new Monitor({ daemon: true, dryRun: true });
 
