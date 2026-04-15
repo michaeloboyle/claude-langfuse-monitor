@@ -381,6 +381,12 @@ describe('Monitor', () => {
       expect(m.options.historyHours).toBe(48);
     });
 
+    test('preserves historyHours: 0 (does not fall back to default)', () => {
+      const m = new Monitor({ historyHours: 0, dryRun: true });
+
+      expect(m.options.historyHours).toBe(0);
+    });
+
     test('accepts daemon mode', () => {
       const m = new Monitor({ daemon: true, dryRun: true });
 
@@ -1062,8 +1068,17 @@ describe('Monitor', () => {
       expect(historySpy).toHaveBeenCalled();
     });
 
+    test('skips processExistingHistory when historyHours is 0', async () => {
+      const m = new Monitor({ dryRun: true, historyHours: 0 });
+      const historySpy = jest.spyOn(m, 'processExistingHistory').mockResolvedValue();
+
+      m.start();
+      await new Promise(resolve => setImmediate(resolve));
+
+      expect(historySpy).not.toHaveBeenCalled();
+    });
+
     test('skips processExistingHistory when historyHours is negative', async () => {
-      // historyHours: -1 works because -1 is truthy so -1 || 24 = -1, and -1 > 0 is false
       const m = new Monitor({ dryRun: true, historyHours: -1 });
       const historySpy = jest.spyOn(m, 'processExistingHistory').mockResolvedValue();
 
