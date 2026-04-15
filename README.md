@@ -16,7 +16,7 @@ Just like [Claude Analytics](https://www.npmjs.com/package/claude-code-templates
 ✅ **Automatic Coverage** - All conversations, all projects, all messages
 ✅ **Real-Time Streaming** - See activity appear in Langfuse as it happens
 ✅ **Session Grouping** - Conversations grouped by project and session
-✅ **Historical Backfill** - Process last 24 hours on startup
+✅ **Historical Backfill** - Opt-in, process past conversations via `--history <hours>`
 ✅ **System Service** - Run automatically on login (macOS LaunchAgent)
 ✅ **Production Ready** - Token usage, costs, performance metrics
 
@@ -95,10 +95,11 @@ Claude Code → ~/.claude/projects/*.jsonl → Monitor → Langfuse
 ### Start the monitor
 
 ```bash
-# Foreground (testing)
+# Foreground (testing) - watch for new activity only
 claude-langfuse start
 
-# With custom history processing
+# Backfill recent history on startup (opt-in)
+claude-langfuse start --history 24  # Last 24 hours
 claude-langfuse start --history 48  # Last 48 hours
 
 # Background daemon

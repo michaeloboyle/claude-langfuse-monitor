@@ -370,7 +370,7 @@ describe('Monitor', () => {
     test('sets default options when not provided', () => {
       const m = new Monitor({ dryRun: true });
 
-      expect(m.options.historyHours).toBe(24);
+      expect(m.options.historyHours).toBe(0);
       expect(m.options.daemon).toBe(false);
       expect(m.options.dryRun).toBe(true);
     });
