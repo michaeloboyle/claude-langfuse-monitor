@@ -20,7 +20,7 @@ program
   .command('start')
   .description('Start monitoring Claude Code activity')
   .option('-d, --daemon', 'Run as background daemon')
-  .option('-h, --history <hours>', 'Process last N hours of history', '24')
+  .option('-h, --history <hours>', 'Process last N hours of history (default: 0, skip backfill)', '0')
   .option('-q, --quiet', 'Quiet mode - only show summaries, not individual messages')
   .action(async (options) => {
     console.log(chalk.cyan('🔍 Claude Langfuse Monitor'));
