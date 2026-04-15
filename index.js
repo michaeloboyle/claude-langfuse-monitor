@@ -18,7 +18,7 @@ const crypto = require('crypto');
 class Monitor {
   constructor(options = {}) {
     this.options = {
-      historyHours: options.historyHours || 24,
+      historyHours: options.historyHours ?? 24,
       daemon: options.daemon || false,
       dryRun: options.dryRun || false,
       quiet: options.quiet || false
